@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hành Trình Việt Nam 3D - SUPER</title>
+<style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#06101c;color:#fff;font-family:Arial,sans-serif}
+canvas{display:block}.hidden{display:none!important}
+#hud{position:fixed;z-index:5;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}.card{background:#071525dd;border:1px solid #ffffff25;border-radius:14px;padding:10px 14px;backdrop-filter:blur(8px);box-shadow:0 8px 30px #0005}
+#mission{position:fixed;z-index:5;top:92px;left:12px;width:265px}.bar{height:8px;background:#ffffff18;border-radius:99px;overflow:hidden;margin-top:7px}.fill{height:100%;background:#f0a62b;width:0}
+#minimap{position:fixed;z-index:5;right:12px;top:92px;width:155px;height:155px;border:2px solid #ffffff55;border-radius:14px;background:#163b27dd}
+#tip{position:fixed;z-index:5;bottom:16px;left:50%;transform:translateX(-50%);background:#071525ee;border:1px solid #ffffff22;border-radius:999px;padding:11px 18px;text-align:center;max-width:92vw}
+.screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#04101ddd;backdrop-filter:blur(9px);overflow:auto}.panel{width:min(760px,93vw);margin:25px;padding:28px;border-radius:24px;background:#0a182af4;border:1px solid #ffffff25;box-shadow:0 25px 100px #0009;text-align:center}
+.hero{font-size:66px}.panel h1{font-size:clamp(30px,6vw,58px);margin:5px 0}.sub{color:#c2cfdf;line-height:1.6}.btn{border:0;border-radius:12px;padding:13px 18px;margin:5px;background:#f0a62b;color:#171006;font-weight:800;cursor:pointer}.btn.alt{background:#ffffff10;color:#fff;border:1px solid #ffffff20}.btn:hover{filter:brightness(1.12)}
+.chars{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px}.char{background:#ffffff08;color:#fff;border:1px solid #ffffff20;border-radius:13px;padding:10px 14px;font-size:26px;cursor:pointer}.char.active{border-color:#f0a62b;background:#f0a62b22}
+.answers{display:grid;gap:9px;margin-top:18px}.answers button{padding:13px;border-radius:12px;border:1px solid #ffffff20;background:#ffffff09;color:#fff;cursor:pointer;text-align:left}.answers button:hover{background:#ffffff18}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:15px 0}.stat{background:#ffffff08;border-radius:12px;padding:12px}.list{text-align:left;display:grid;gap:7px;max-height:280px;overflow:auto}.list div{background:#ffffff08;padding:9px;border-radius:9px}
+@media(max-width:650px){#mission{width:205px;font-size:12px}.card{font-size:11px}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="hud"><div class="card">🇻🇳 <b>INDET • SUPER 3D</b><br><small>WASD • kéo chuột • khám phá</small></div><div class="card">⭐ <b id="score">0</b> &nbsp; 🔥 <b id="combo">x1</b> &nbsp; 💎 <b id="items">0</b></div></div>
+<div id="mission" class="card"><b>🎯 NHIỆM VỤ</b><div id="missionText">Nói chuyện với NPC đầu tiên.</div><div class="bar"><div id="fill" class="fill"></div></div></div>
+<canvas id="minimap" width="155" height="155"></canvas><div id="tip">🌟 Chào mừng! Hãy tìm NPC có vòng sáng.</div>
+
+<section id="start" class="screen"><div class="panel"><div class="hero">🇻🇳</div><h1>INDET</h1><p class="sub"><span style="color:#8fe8ff">● 3D READY</span><br>SUPER 3D • PHIÊN BẢN TRÌNH DIỄN<br>Khám phá • nhiệm vụ • NPC • di sản • vật phẩm • thời tiết • ngày/đêm</p>
+<div class="chars"><button class="char active" data-c="🧑‍🎓">🧑‍🎓<small> Học sinh</small></button><button class="char" data-c="🧭">🧭<small> Thám hiểm</small></button><button class="char" data-c="👩‍🏫">👩‍🏫<small> Hướng dẫn viên</small></button></div>
+<button class="btn" id="startBtn">▶ BẮT ĐẦU</button><button class="btn alt" id="guideBtn">📖 HƯỚNG DẪN</button><button class="btn alt" id="startRankBtn">🏆 XẾP HẠNG</button></div></section>
+
+<section id="guide" class="screen hidden"><div class="panel"><div class="hero">🎮</div><h1>HƯỚNG DẪN</h1><p class="sub">⌨️ WASD di chuyển • 🖱️ kéo chuột xoay camera • 🧑‍💼 tìm NPC • 🏛️ đến gần địa danh • 💎 nhặt tinh thể • 🌧️ thời tiết thay đổi • 🌙 ngày/đêm thay đổi • 🔥 trả lời liên tiếp đúng để tăng combo.</p><button class="btn" id="guideClose">BẮT ĐẦU</button></div></section>
+
+<section id="dialog" class="screen hidden"><div class="panel"><div class="hero" id="npcIcon">🧑‍💼</div><h2 id="dialogTitle"></h2><p class="sub" id="dialogText"></p><div id="dialogChoices"></div></div></section>
+<section id="quiz" class="screen hidden"><div class="panel"><div class="sub" id="qplace"></div><h2 id="qtext"></h2><div id="answers" class="answers"></div></div></section>
+<section id="win" class="screen hidden"><div class="panel"><div class="hero">🏆</div><h1>ĐẠI SỨ DI SẢN VIỆT NAM!</h1><p class="sub">Bạn đã hoàn thành chuyến hành trình siêu đặc biệt.</p><div class="stats"><div class="stat">⭐<br><b id="finalScore">0</b><br>Điểm</div><div class="stat">🔥<br><b id="finalCombo">x1</b><br>Combo</div><div class="stat">💎<br><b id="finalItems">0</b><br>Vật phẩm</div><div class="stat">🏛️<br><b>5/5</b><br>Di sản</div></div><p>🥇 Nhà thám hiểm &nbsp; 🧠 Học giả &nbsp; 🇻🇳 Đại sứ di sản</p><button class="btn" onclick="location.reload()">🔄 CHƠI LẠI</button><button class="btn alt" id="rankBtn">🏆 XẾP HẠNG</button></div></section>
+<section id="rank" class="screen hidden"><div class="panel"><div class="hero">🏆</div><h1>XẾP HẠNG</h1><div class="list" id="rankList"></div><button class="btn alt" id="rankClose">QUAY LẠI</button></div></section>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.min.js"></script>
+<script>if(!window.THREE){document.write('<script src="https://unpkg.com/three@0.180.0/build/three.min.js"><\/script>')}</script>
+<script>
+'use strict';
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,700);
+scene.background=new THREE.Color(0x8bc0df);scene.fog=new THREE.Fog(0x8bc0df,170,450);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);
+const hemi=new THREE.HemisphereLight(0xdff7ff,0x31512f,2),sun=new THREE.DirectionalLight(0xffffff,3);scene.add(hemi,sun);sun.position.set(80,150,70);sun.castShadow=true;
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500,40,40),new THREE.MeshStandardMaterial({color:0x3f7f49,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const roadMat=new THREE.MeshStandardMaterial({color:0x62655f});function road(x,z,w,d){let m=new THREE.Mesh(new THREE.BoxGeometry(w,.06,d),roadMat);m.position.set(x,.03,z);scene.add(m)}road(0,0,500,7);road(0,0,7,500);
+function tree(x,z,s){let g=new THREE.Group(),t=new THREE.Mesh(new THREE.CylinderGeometry(.3*s,.5*s,3*s,8),new THREE.MeshStandardMaterial({color:0x70462d})),c=new THREE.Mesh(new THREE.SphereGeometry(1.7*s,10,8),new THREE.MeshStandardMaterial({color:0x286d3a}));t.position.y=1.5*s;c.position.y=3.2*s;g.add(t,c);g.position.set(x,0,z);g.traverse(o=>o.castShadow=true);scene.add(g)}for(let i=0;i<90;i++){let x=(Math.random()-.5)*450,z=(Math.random()-.5)*450;if(Math.abs(x)<38||Math.abs(z)<38)continue;tree(x,z,.55+Math.random()*.7)}
+
+const places=[
+{name:'Hà Nội',x:-100,z:-65,icon:'🏯',color:0xd7a33f,q:'Văn Miếu - Quốc Tử Giám thuộc thành phố nào?',a:['Huế','Hà Nội','Đà Nẵng','Cần Thơ'],ok:1},
+{name:'Hà Giang',x:105,z:-75,icon:'🏔️',color:0x5e9fce,q:'Cột cờ Lũng Cú nằm ở tỉnh nào?',a:['Hà Giang','Lào Cai','Cao Bằng','Sơn La'],ok:0},
+{name:'Huế',x:-105,z:78,icon:'🏛️',color:0xa58ad5,q:'Đại Nội là di tích nổi tiếng của thành phố nào?',a:['Hà Nội','Huế','Hội An','Nha Trang'],ok:1},
+{name:'Đà Nẵng',x:105,z:75,icon:'🌉',color:0x57bccc,q:'Công trình hình rồng bắc qua sông Hàn là gì?',a:['Cầu Rồng','Cầu Tràng Tiền','Cầu Long Biên','Cầu Nhật Tân'],ok:0},
+{name:'TP. Hồ Chí Minh',x:0,z:140,icon:'🏙️',color:0xd66c70,q:'Dinh Độc Lập nằm ở thành phố nào?',a:['Hải Phòng','Huế','TP. Hồ Chí Minh','Đà Nẵng'],ok:2}];
+const lm=[];
+places.forEach((p,i)=>{let g=new THREE.Group();g.position.set(p.x,0,p.z);g.userData.i=i;let b=new THREE.Mesh(new THREE.CylinderGeometry(9,11,2,8),new THREE.MeshStandardMaterial({color:p.color})),t=new THREE.Mesh(new THREE.CylinderGeometry(4,5,12,8),new THREE.MeshStandardMaterial({color:p.color})),r=new THREE.Mesh(new THREE.ConeGeometry(6,5,8),new THREE.MeshStandardMaterial({color:0x423027})),ring=new THREE.Mesh(new THREE.TorusGeometry(11,.35,8,48),new THREE.MeshBasicMaterial({color:0xffd35c}));b.position.y=1;t.position.y=7;r.position.y=15;ring.rotation.x=Math.PI/2;ring.position.y=.5;g.add(b,t,r,ring);g.traverse(o=>o.castShadow=true);scene.add(g);lm.push(g)});
+
+const npcData=[
+{x:-42,z:-28,icon:'🧑‍💼',name:'Anh Minh',text:'Chào bạn! Hành trình của bạn bắt đầu ở đây. Hãy đến Hà Nội và giải câu hỏi đầu tiên.',task:0},
+{x:55,z:15,icon:'👩‍🏫',name:'Cô Lan',text:'Mỗi tinh thể xanh là một mảnh năng lượng tri thức. Nhặt chúng để tăng điểm!',task:1},
+{x:35,z:110,icon:'🧓',name:'Bác Nam',text:'Khi đã khám phá đủ 5 địa danh, bạn sẽ trở thành Đại sứ Di sản Việt Nam.',task:2}];
+npcData.forEach(n=>{let g=new THREE.Group();g.position.set(n.x,0,n.z);g.userData=n;let b=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.7,3.5,10),new THREE.MeshStandardMaterial({color:0x4e75b8})),h=new THREE.Mesh(new THREE.SphereGeometry(1.2,14,10),new THREE.MeshStandardMaterial({color:0xf1c7a5})),q=new THREE.Mesh(new THREE.TorusGeometry(2.2,.18,8,32),new THREE.MeshBasicMaterial({color:0x76e8ff}));b.position.y=2;h.position.y=4.5;q.rotation.x=Math.PI/2;q.position.y=.3;g.add(b,h,q);g.traverse(o=>o.castShadow=true);scene.add(g)});
+
+const gems=[];for(let i=0;i<18;i++){let g=new THREE.Mesh(new THREE.OctahedronGeometry(1.05),new THREE.MeshStandardMaterial({color:0x74e8ff,emissive:0x124c66,emissiveIntensity:1.2}));g.position.set((Math.random()-.5)*400,2,(Math.random()-.5)*400);g.userData.collected=false;scene.add(g);gems.push(g)}
+const player=new THREE.Group(),body=new THREE.Mesh(new THREE.CapsuleGeometry(1.45,3,5,10),new THREE.MeshStandardMaterial({color:0xf0a62b})),head=new THREE.Mesh(new THREE.SphereGeometry(1.2,16,12),new THREE.MeshStandardMaterial({color:0xf1c7a5}));body.position.y=2.5;head.position.y=5.2;player.add(body,head);scene.add(player);
+
+let score=0,combo=1,visited=new Set(),active=null,playing=false,selected='🧑‍🎓',yaw=0,drag=false,lx=0,ly=0,cycle=0,dialogCooldown=0;
+document.querySelectorAll('.char').forEach(b=>b.onclick=()=>{document.querySelectorAll('.char').forEach(x=>x.classList.remove('active'));b.classList.add('active');selected=b.dataset.c});
+const keys={};addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY});addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-lx)*.006;lx=e.clientX;ly=e.clientY});
+
+const $=id=>document.getElementById(id);function show(x){const e=$(x);if(e)e.classList.remove('hidden')}function hide(x){const e=$(x);if(e)e.classList.add('hidden')}
+function ui(){ $('score').textContent=score;$('combo').textContent='x'+combo;$('items').textContent=gems.filter(g=>g.userData.collected).length;$('fill').style.width=(visited.size/5*100)+'%';$('missionText').textContent=visited.size<5?'Khám phá '+(5-visited.size)+' địa danh còn lại.':'Đã mở khóa nhiệm vụ cuối: hoàn thành hành trình!'}
+function sound(freq=500){try{let A=window.AudioContext||window.webkitAudioContext;if(!A)return;if(!window.ac)window.ac=new A();let o=ac.createOscillator(),g=ac.createGain();o.frequency.value=freq;g.gain.value=.035;o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+.12)}catch(e){}}
+function dialog(n){$('npcIcon').textContent=n.icon;$('dialogTitle').textContent=n.name;$('dialogText').textContent=n.text;$('dialogChoices').innerHTML='';let b=document.createElement('button');b.className='btn';b.textContent=n.task===0?'🚀 NHẬN NHIỆM VỤ':'👍 ĐÃ HIỂU';b.onclick=()=>{hide('dialog');dialogCooldown=120};$('dialogChoices').appendChild(b);show('dialog')}
+function quiz(i){active=i;let p=places[i];$('qplace').textContent=p.icon+' '+p.name;$('qtext').textContent=p.q;$('answers').innerHTML='';p.a.forEach((x,j)=>{let b=document.createElement('button');b.textContent=(j+1)+'. '+x;b.onclick=()=>answer(j);$('answers').appendChild(b)});show('quiz')}
+function answer(j){let p=places[active];if(j===p.ok){score+=200*combo;combo=Math.min(5,combo+1);visited.add(active);sound(720);$('tip').textContent='✨ Chính xác! +'+(200*(combo-1))+' điểm • Combo tăng!'}else{score=Math.max(0,score-50);combo=1;sound(180);$('tip').textContent='❌ Chưa đúng. Combo trở về x1.'}hide('quiz');active=null;ui();if(visited.size===5){score+=1000;ui();$('finalScore').textContent=score;$('finalCombo').textContent='x'+combo;$('finalItems').textContent=gems.filter(g=>g.userData.collected).length;save();setTimeout(()=>show('win'),500)}}
+function save(){let a=JSON.parse(localStorage.getItem('vnSuperScores')||'[]');a.push({name:'Bạn',score,date:new Date().toLocaleDateString('vi-VN')});a.sort((a,b)=>b.score-a.score);localStorage.setItem('vnSuperScores',JSON.stringify(a.slice(0,20)))}
+function ranks(){let a=JSON.parse(localStorage.getItem('vnSuperScores')||'[]');$('rankList').innerHTML=a.length?a.slice(0,10).map((x,i)=>`<div>🏅 ${i+1}. <b>${x.name}</b> — ${x.score} điểm <small>${x.date}</small></div>`).join(''):'<div>Chưa có thành tích.</div>';show('rank')}
+$('guideBtn').onclick=()=>show('guide');$('guideClose').onclick=()=>{hide('guide');start()};$('startBtn').onclick=start;$('startRankBtn').onclick=ranks;$('rankBtn').onclick=ranks;$('rankClose').onclick=()=>hide('rank');
+
+const mini=$('minimap'),mc=mini.getContext('2d');function minimap(){mc.fillStyle='#174a2e';mc.fillRect(0,0,155,155);mc.strokeStyle='#71927a';mc.beginPath();mc.moveTo(77,0);mc.lineTo(77,155);mc.moveTo(0,77);mc.lineTo(155,77);mc.stroke();places.forEach((p,i)=>{let x=77+p.x/3.2,y=77+p.z/3.2;mc.fillStyle=visited.has(i)?'#777':'#ffd55d';mc.beginPath();mc.arc(x,y,4,0,7);mc.fill()});let x=77+player.position.x/3.2,y=77+player.position.z/3.2;mc.fillStyle='#fff';mc.beginPath();mc.arc(x,y,4,0,7);mc.fill()}
+
+let loopStarted=false;
+function start(){
+ if(typeof THREE==='undefined'){alert('Không tải được thư viện 3D. Hãy kiểm tra Internet rồi tải lại trang.');return}
+ hide('start');hide('guide');hide('rank');playing=true;if(!loopStarted){loopStarted=true;loop()}
+}
+function loop(){
+requestAnimationFrame(loop);
+if(!playing){renderer.render(scene,camera);return}
+cycle+=.002;
+const daylight=(Math.sin(cycle)+1)/2;scene.background.lerpColors(new THREE.Color(0x101c38),new THREE.Color(0x8bc0df),daylight);scene.fog.color.copy(scene.background);sun.intensity=.8+2.2*daylight;hemi.intensity=.8+1.2*daylight;
+const f=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)),r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw)),sp=.72;
+if($('quiz').classList.contains('hidden')&&$('dialog').classList.contains('hidden')){
+if(keys.w)player.position.addScaledVector(f,-sp);if(keys.s)player.position.addScaledVector(f,sp);if(keys.a)player.position.addScaledVector(r,sp);if(keys.d)player.position.addScaledVector(r,-sp);
+player.position.x=Math.max(-235,Math.min(235,player.position.x));player.position.z=Math.max(-235,Math.min(235,player.position.z));
+places.forEach((p,i)=>{if(player.position.distanceTo(new THREE.Vector3(p.x,0,p.z))<16&&!visited.has(i)&&active===null)quiz(i)});
+if(dialogCooldown>0)dialogCooldown--;
+npcData.forEach(n=>{if(dialogCooldown===0&&player.position.distanceTo(new THREE.Vector3(n.x,0,n.z))<7&&!drag&&$('dialog').classList.contains('hidden')){dialog(n);dialogCooldown=90}});
+gems.forEach(g=>{if(!g.userData.collected){g.rotation.y+=.035;g.position.y=2+Math.sin(performance.now()/300+g.position.x)*.35;if(player.position.distanceTo(g.position)<4){g.userData.collected=true;g.visible=false;score+=50;sound(900);$('tip').textContent='💎 +50 điểm! Tinh thể tri thức đã thu thập.';ui()}}});
+}
+camera.position.lerp(new THREE.Vector3(player.position.x+Math.sin(yaw)*22,player.position.y+12,player.position.z+Math.cos(yaw)*22),.12);camera.lookAt(player.position.x,3,player.position.z);minimap();renderer.render(scene,camera)}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});ui();
+</script></body></html>
